@@ -1,37 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace M2Boilerplate\CriticalCss\Controller\CriticalCss;
 
-use Magento\Framework\App\Action\Action;
-use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\App\RequestInterface;
+use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 
-class DefaultAction extends Action
+/**
+ * Controller action to render a specific layout handle for CSS generation.
+ *
+ * This endpoint is hit by the headless browser to render the page structure
+ * defined by the 'page_layout' parameter.
+ */
+class DefaultAction implements HttpGetActionInterface
 {
+    /**
+     * @param PageFactory $pageFactory
+     * @param RequestInterface $request
+     */
+    public function __construct(
+        private readonly PageFactory $pageFactory,
+        private readonly RequestInterface $request
+    ) {
+    }
 
     /**
-     * @var PageFactory
+     * Execute the action.
+     *
+     * @return Page
      */
-    protected $pageFactory;
-
-    public function __construct(
-        PageFactory $pageFactory,
-        Context $context
-    ) {
-        parent::__construct($context);
-        $this->pageFactory = $pageFactory;
-    }
-
-    public function execute()
+    public function execute(): Page
     {
         $page = $this->pageFactory->create();
-        $pageLayout = $this->getRequest()->getParam('page_layout');
-        if ($pageLayout) {
+        $pageLayout = $this->request->getParam('page_layout');
+
+        if ($pageLayout && is_string($pageLayout)) {
             $page->getConfig()->setPageLayout($pageLayout);
-            $page->getLayout()->getUpdate()->addHandle('m2bp-'.$pageLayout);
+            $page->getLayout()->getUpdate()->addHandle('m2bp-' . $pageLayout);
         }
+
         return $page;
     }
-
-
 }
