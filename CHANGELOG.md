@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.1] - 2026-02-16
+
+### Changed
+
+* **Plugin Refactoring**: Optimized `M2Boilerplate\CriticalCss\Plugin\CriticalCss` to align with PHP 8.3 standards.
+* **Immutability**: Transitioned all injected dependencies to `readonly` promoted properties within the constructor to ensure service integrity.
+* **Type Safety**: Enforced strict scalar and object typing for all method parameters and return values.
+
+### Removed
+
+* **Unused Dependencies**: Excised the `FlagManager` and `GenerateCommand` imports from the plugin class to reduce memory overhead and adhere to the **KISS** (Keep It Simple, Stupid) principle.
+
+### Documentation
+
+* **PHPDoc Standards**: Updated the class and method documentation to full English PHPDoc standards, explicitly describing the interception logic for the `afterGetCriticalCssData` method.
+
+---
+
 ## [2.3.0] - 2026-02-16
 
 ### Added
