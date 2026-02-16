@@ -42,7 +42,9 @@ class CriticalCss
     ): Process {
         $command = [
             $criticalBinary,
-            $url
+            $url,
+            '--minify', // Ensure the binary minifies the output
+            '--strict'
         ];
 
         foreach ($forceIncludeCssSelectors as $selector) {
