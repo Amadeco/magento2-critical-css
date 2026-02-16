@@ -1,11 +1,8 @@
 {
-    "name": "studioraz/magento2-critical-css",
+    "name": "amadeco/magento2-critical-css",
     "description": "Magento 2 module to automatically generate critical css with the addyosmani/critical npm package",
     "type": "magento2-module",
     "prefer-stable": true,
-    "version": "2.1.0",
-    "keywords": [
-    ],
     "license": [
         "MIT"
     ],
