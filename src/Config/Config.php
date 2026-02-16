@@ -14,13 +14,13 @@ use Magento\Store\Model\ScopeInterface;
  */
 class Config
 {
-    private const CONFIG_PATH_ENABLED = 'dev/css/use_css_critical_path';
-    private const CONFIG_PATH_CRITICAL_BINARY = 'dev/css/critical_css_critical_binary';
-    private const CONFIG_PATH_PARALLEL_PROCESSES = 'dev/css/critical_css_parallel_processes';
-    private const CONFIG_PATH_USERNAME = 'dev/css/critical_css_username';
-    private const CONFIG_PATH_PASSWORD = 'dev/css/critical_css_password';
-    private const CONFIG_PATH_DIMENSIONS = 'dev/css/critical_css_dimensions';
-    private const CONFIG_PATH_FORCE_INCLUDE_CSS_SELECTORS = 'dev/css/critical_css_force_include_css_selectors';
+    public const CONFIG_PATH_ENABLED = 'dev/css/use_css_critical_path';
+    public const CONFIG_PATH_CRITICAL_BINARY = 'dev/css/critical_css_critical_binary';
+    public const CONFIG_PATH_PARALLEL_PROCESSES = 'dev/css/critical_css_parallel_processes';
+    public const CONFIG_PATH_USERNAME = 'dev/css/critical_css_username';
+    public const CONFIG_PATH_PASSWORD = 'dev/css/critical_css_password';
+    public const CONFIG_PATH_DIMENSIONS = 'dev/css/critical_css_dimensions';
+    public const CONFIG_PATH_FORCE_INCLUDE_CSS_SELECTORS = 'dev/css/critical_css_force_include_css_selectors';
 
     /**
      * Default screen dimensions if none are configured.
