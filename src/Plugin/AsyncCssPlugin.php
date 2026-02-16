@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace M2Boilerplate\CriticalCss\Plugin;
 
+use M2Boilerplate\CriticalCss\Config\Config;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\HTTP\Header;
@@ -38,7 +39,8 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        protected Header $httpHeader
+        protected readonly Config $config,
+        protected readonly Header $httpHeader
     ) {
         parent::__construct($scopeConfig);
     }
@@ -69,7 +71,7 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
     private function canBeProcessed(ResponseInterface $httpResponse): bool
     {
         // 1. Is the feature enabled in config?
-        if (!$this->isCssCriticalEnabled()) {
+        if (!$this->config->isCssCriticalEnabled()) {
             return false;
         }
 
@@ -111,18 +113,5 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
         // implying standard async loading might not be appropriate or necessary via this logic.
         // However, looking at legacy logic: if the block was removed/not found, it returned true (empty).
         return true;
-    }
-
-    /**
-     * Returns information whether css critical path is enabled.
-     *
-     * @return bool
-     */
-    private function isCssCriticalEnabled(): bool
-    {
-        return $this->scopeConfig->isSetFlag(
-            'dev/css/use_css_critical_path',
-            ScopeInterface::SCOPE_STORE
-        );
     }
 }
