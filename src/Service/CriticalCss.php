@@ -42,9 +42,7 @@ class CriticalCss
     ): Process {
         $command = [
             $criticalBinary,
-            $url,
-            '--minify', // Ensure the binary minifies the output
-            '--strict'
+            $url
         ];
 
         foreach ($forceIncludeCssSelectors as $selector) {
@@ -67,10 +65,13 @@ class CriticalCss
         }
 
         $command[] = '--strict';
+        $command[] = '--minify';
         $command[] = '--no-request-https.rejectUnauthorized';
 
         $command[] = '--ignore-atrule';
         $command[] = '@font-face';
+        $command[] = '--ignore-atrule';
+        $command[] = 'print';
 
         /** @var Process $process */
         $process = $this->processFactory->create(['command' => $command]);
