@@ -1,84 +1,112 @@
 <?php
 
+declare(strict_types=1);
+
 namespace M2Boilerplate\CriticalCss\Service;
 
 use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\View\Asset\Repository as AssetRepository;
-use Magento\Framework\View\Asset\File;
+use Magento\Framework\Exception\FileSystemException;
+use Magento\Framework\Filesystem;
+use Magento\Framework\Filesystem\Directory\WriteInterface;
 
+/**
+ * Handles file system operations for storing and retrieving generated Critical CSS.
+ */
 class Storage
 {
-
-    const DIRECTORY = 'critical-css';
-
-    /**
-     * @var \Magento\Framework\Filesystem
-     */
-    protected $filesystem;
+    private const DIRECTORY = 'critical-css';
 
     /**
-     * @var \Magento\Framework\Filesystem\Directory\WriteInterface
+     * @var WriteInterface
      */
-    protected $directory;
+    protected WriteInterface $directory;
 
     /**
-     * Storage constructor.
-     *
-     * @param \Magento\Framework\Filesystem $filesystem
-     *
-     * @throws \Magento\Framework\Exception\FileSystemException
+     * @param Filesystem $filesystem
+     * @throws FileSystemException
      */
-    public function __construct(\Magento\Framework\Filesystem $filesystem)
-    {
-        $this->filesystem = $filesystem;
+    public function __construct(
+        protected Filesystem $filesystem
+    ) {
         $this->directory = $this->filesystem->getDirectoryWrite(DirectoryList::VAR_DIR);
     }
 
     /**
-     * @throws \Magento\Framework\Exception\FileSystemException
+     * Delete the existing critical CSS directory.
+     *
+     * @return void
+     * @throws FileSystemException
      */
-    public function clean()
+    public function clean(): void
     {
-        $this->directory->delete(self::DIRECTORY);
+        if ($this->directory->isExist(self::DIRECTORY)) {
+            $this->directory->delete(self::DIRECTORY);
+        }
     }
 
     /**
-     * @param $identifier
-     * @param $content
+     * Write Critical CSS content to a file.
      *
+     * @param string $identifier
+     * @param string|null $content
      * @return bool
-     * @throws \Magento\Framework\Exception\FileSystemException
+     * @throws FileSystemException
      */
     public function saveCriticalCss(string $identifier, ?string $content): bool
     {
+        // Ensure directory exists
         $this->directory->create(self::DIRECTORY);
-        $this->directory->writeFile(self::DIRECTORY.'/'.$identifier.'.css', $content);
+        
+        $filePath = $this->getFilePath($identifier);
+        $this->directory->writeFile($filePath, (string)$content);
+        
         return true;
     }
 
     /**
-     * @param $identifier
+     * Read Critical CSS content from a file.
      *
-     * @return null|string
-     * @throws \Magento\Framework\Exception\FileSystemException
+     * @param string $identifier
+     * @return string|null
+     * @throws FileSystemException
      */
-    public function getCriticalCss($identifier): ?string
+    public function getCriticalCss(string $identifier): ?string
     {
-        $file = self::DIRECTORY.'/'.$identifier.'.css';
-        if (!$this->directory->isReadable($file)) {
+        $filePath = $this->getFilePath($identifier);
+        
+        if (!$this->directory->isReadable($filePath)) {
             return null;
         }
-        return $this->directory->readFile($file);
+        
+        return $this->directory->readFile($filePath);
     }
 
-    public function getFileSize($identifier): ?string
+    /**
+     * Get the size of the stored Critical CSS file in bytes.
+     *
+     * @param string $identifier
+     * @return int|null
+     */
+    public function getFileSize(string $identifier): ?int
     {
-        $file = self::DIRECTORY.'/'.$identifier.'.css';
-        $stat = $this->directory->stat($file);
-        if (!isset($stat['size'])) {
+        $filePath = $this->getFilePath($identifier);
+        
+        try {
+            $stat = $this->directory->stat($filePath);
+            return isset($stat['size']) ? (int)$stat['size'] : null;
+        } catch (FileSystemException $e) {
             return null;
         }
+    }
 
-        return $stat['size'];
+    /**
+     * Get relative file path for the identifier.
+     *
+     * @param string $identifier
+     * @return string
+     */
+    private function getFilePath(string $identifier): string
+    {
+        return self::DIRECTORY . '/' . $identifier . '.css';
     }
 }
