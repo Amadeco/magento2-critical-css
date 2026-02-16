@@ -1,175 +1,184 @@
 <?php
 
+declare(strict_types=1);
+
 namespace M2Boilerplate\CriticalCss\Console\Command;
 
 use M2Boilerplate\CriticalCss\Config\Config;
-use M2Boilerplate\CriticalCss\Logger\Handler\ConsoleHandlerFactory;
+use M2Boilerplate\CriticalCss\Logger\ConsoleLoggerFactory;
 use M2Boilerplate\CriticalCss\Service\CriticalCss;
 use M2Boilerplate\CriticalCss\Service\ProcessManager;
 use M2Boilerplate\CriticalCss\Service\ProcessManagerFactory;
-use Magento\Framework\App\Cache\Manager;
-use Magento\Framework\App\Config\Storage\WriterInterface;
+use Magento\Framework\App\Area;
 use Magento\Framework\App\State;
-use Magento\Framework\FlagManager;
-use Magento\Framework\ObjectManagerInterface;
+use Magento\Framework\Console\Cli;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Throwable;
 
+/**
+ * CLI Command to generate Critical CSS for configured stores.
+ */
 class GenerateCommand extends Command
 {
-    public const INPUT_OPTION_KEY_STORE_IDS = 'store-id';
+    private const INPUT_OPTION_KEY_STORE_IDS = 'store-id';
 
     /**
-     * @var ProcessManagerFactory
+     * @param Config $config
+     * @param CriticalCss $criticalCssService
+     * @param ConsoleLoggerFactory $consoleLoggerFactory
+     * @param ProcessManagerFactory $processManagerFactory
+     * @param State $state
+     * @param string|null $name
      */
-    protected $processManagerFactory;
-    /**
-     * @var ConsoleHandlerFactory
-     */
-    protected $consoleHandlerFactory;
-    /**
-     * @var ObjectManagerInterface
-     */
-    protected $objectManager;
-    /**
-     * @var Config
-     */
-    protected $config;
-    /**
-     * @var CriticalCss
-     */
-    protected $criticalCssService;
-
-    /**
-     * @var \Magento\Framework\App\State
-     */
-    protected $state;
-
-    /**
-     * @var FlagManager
-     */
-    protected $flagManager;
-
-    /**
-     * @var WriterInterface
-     */
-    protected $configWriter;
-
-    /**
-     * @var Manager
-     */
-    protected $cacheManager;
-
     public function __construct(
-        FlagManager $flagManager,
-        Config $config,
-        CriticalCss $criticalCssService,
-        ObjectManagerInterface $objectManager,
-        ConsoleHandlerFactory $consoleHandlerFactory,
-        ProcessManagerFactory $processManagerFactory,
-        State $state,
-        WriterInterface $configWriter,
-        Manager $cacheManager,
+        protected Config $config,
+        protected CriticalCss $criticalCssService,
+        protected ConsoleLoggerFactory $consoleLoggerFactory,
+        protected ProcessManagerFactory $processManagerFactory,
+        protected State $state,
         ?string $name = null
-    )
-    {
+    ) {
         parent::__construct($name);
-        $this->flagManager = $flagManager;
-        $this->processManagerFactory = $processManagerFactory;
-        $this->consoleHandlerFactory = $consoleHandlerFactory;
-        $this->objectManager = $objectManager;
-        $this->config = $config;
-        $this->criticalCssService = $criticalCssService;
-        $this->state = $state;
-        $this->configWriter = $configWriter;
-        $this->cacheManager = $cacheManager;
     }
 
-
-    protected function configure()
+    /**
+     * @inheritDoc
+     */
+    protected function configure(): void
     {
         $this->setName('m2bp:critical-css:generate');
-        $this->getDefinition()->addOptions($this->getOptionsList());
+        $this->setDescription('Generate critical CSS for the configured stores.');
+        $this->addOption(
+            self::INPUT_OPTION_KEY_STORE_IDS,
+            null,
+            InputOption::VALUE_REQUIRED,
+            'Comma-separated list of Magento Store IDs to process (e.g., "1,2").'
+        );
+        
         parent::configure();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    /**
+     * Execute the command.
+     *
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
+     * @throws Throwable
+     */
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
-            $this->state->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
+            // Adminhtml area is required for many backend operations
+            $this->state->setAreaCode(Area::AREA_ADMINHTML);
 
-            // TODO: decide whether cache flushing is really required. temporally commented.
-            //$this->cacheManager->flush($this->cacheManager->getAvailableTypes());
-
+            // Pre-flight check for the critical binary
             $this->criticalCssService->test($this->config->getCriticalBinary());
 
-            $consoleHandler = $this->consoleHandlerFactory->create(['output' => $output]);
-
-            $logger = $this->objectManager->create('M2Boilerplate\CriticalCss\Logger\Console', ['handlers' => ['console' => $consoleHandler]]);
+            // Create a logger bound to this command's output
+            $logger = $this->consoleLoggerFactory->create($output);
 
             /** @var ProcessManager $processManager */
             $processManager = $this->processManagerFactory->create(['logger' => $logger]);
 
+            $this->displayConfiguration($output);
 
-            $output->writeln('<info>\'Use CSS critical path\' config is ' . ($this->config->isEnabled() ? 'Enabled' : 'Disabled') . '</info>');
-            $output->writeln("<info>-----------------------------------------</info>");
-            $output->writeln('<info>Critical Command Configured Options</info>');
-            $output->writeln("<info>-----------------------------------------</info>");
-            $output->writeln('<comment>Screen Dimensions: ' . implode('', $this->config->getDimensions()) . '</comment>');
-            $output->writeln('<comment>Force Include Css Selectors: ' . implode('', $this->config->getForceIncludeCssSelectors()) . '</comment>');
-
-            $output->writeln('<comment>HTTP Auth Username: ' .  $this->config->getUsername() . '</comment>');
-            $output->writeln('<comment>HTTP Auth Password: ' .  $this->config->getPassword() . '</comment>');
-
-            $output->writeln("<info>-----------------------------------------</info>");
             $output->writeln('<info>Gathering URLs...</info>');
-            $output->writeln("<info>-----------------------------------------</info>");
+            $output->writeln('<info>-----------------------------------------</info>');
 
             $processes = $processManager->createProcesses(
-                $this->getStoreIds($input) ?: null
+                $this->getStoreIds($input)
             );
 
-            $output->writeln("<info>-----------------------------------------</info>");
-            $output->writeln('<info>Generating Critical CSS for ' . count($processes) . ' URLs...</info>');
-            $output->writeln("<info>-----------------------------------------</info>");
-            $processManager->executeProcesses($processes, true);
+            $count = count($processes);
+            $output->writeln('<info>-----------------------------------------</info>');
+            $output->writeln(sprintf('<info>Generating Critical CSS for %d URLs...</info>', $count));
+            $output->writeln('<info>-----------------------------------------</info>');
 
-            // TODO: decide whether cache flushing is really required. temporally commented.
-            // $this->cacheManager->flush($this->cacheManager->getAvailableTypes());
+            if ($count > 0) {
+                $processManager->executeProcesses($processes, true);
+            } else {
+                $output->writeln('<comment>No URLs found to process.</comment>');
+            }
 
-        } catch (\Throwable $e) {
-            throw $e;
+            $output->writeln('<info>Done.</info>');
+
+        } catch (Throwable $e) {
+            $output->writeln(sprintf('<error>Error: %s</error>', $e->getMessage()));
+            // In verbose mode, print the stack trace
+            if ($output->getVerbosity() >= OutputInterface::VERBOSITY_VERBOSE) {
+                $output->writeln($e->getTraceAsString());
+            }
+            return Cli::RETURN_FAILURE;
         }
-        return 0;
+
+        return Cli::RETURN_SUCCESS;
     }
 
     /**
-     * Returns list of options and arguments for the command
+     * Display current configuration to the console.
      *
-     * @return mixed
+     * @param OutputInterface $output
+     * @return void
      */
-    public function getOptionsList()
+    private function displayConfiguration(OutputInterface $output): void
     {
-        return [
-            new InputOption(
-                self::INPUT_OPTION_KEY_STORE_IDS,
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Coma-separated list of Magento Store IDs or single value to process specific Store.'
-            ),
-        ];
+        $isEnabled = $this->config->isEnabled() ? 'Enabled' : 'Disabled';
+        
+        $output->writeln(sprintf("<info>'Use CSS critical path' config is %s</info>", $isEnabled));
+        $output->writeln("<info>-----------------------------------------</info>");
+        $output->writeln('<info>Critical Command Configured Options</info>');
+        $output->writeln("<info>-----------------------------------------</info>");
+        
+        $output->writeln(sprintf(
+            '<comment>Screen Dimensions: %s</comment>',
+            implode(', ', $this->config->getDimensions())
+        ));
+        
+        $output->writeln(sprintf(
+            '<comment>Force Include Css Selectors: %s</comment>',
+            implode(', ', $this->config->getForceIncludeCssSelectors())
+        ));
+
+        // Security: Mask password in output if present
+        $username = $this->config->getUsername();
+        $hasPassword = $this->config->getPassword() ? '******' : 'None';
+
+        if ($username) {
+            $output->writeln(sprintf('<comment>HTTP Auth Username: %s</comment>', $username));
+            $output->writeln(sprintf('<comment>HTTP Auth Password: %s</comment>', $hasPassword));
+        }
+
+        $output->writeln("<info>-----------------------------------------</info>");
     }
 
     /**
+     * Parse store IDs from input.
+     *
      * @param InputInterface $input
-     * @return int[]
+     * @return int[]|null
      */
-    private function getStoreIds(InputInterface $input): array
+    private function getStoreIds(InputInterface $input): ?array
     {
-        $ids = $input->getOption(self::INPUT_OPTION_KEY_STORE_IDS) ?: '';
-        $ids = explode(',', $ids);
-        return array_map('intval', array_filter($ids));
+        $ids = $input->getOption(self::INPUT_OPTION_KEY_STORE_IDS);
+        
+        if (empty($ids) || !is_string($ids)) {
+            return null;
+        }
+
+        $idList = explode(',', $ids);
+        $result = [];
+
+        foreach ($idList as $id) {
+            $val = trim($id);
+            if (is_numeric($val)) {
+                $result[] = (int)$val;
+            }
+        }
+
+        return empty($result) ? null : $result;
     }
 }
