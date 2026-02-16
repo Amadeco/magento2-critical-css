@@ -5,6 +5,20 @@ All notable changes to the `M2Boilerplate_CriticalCss` module will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Here is the changelog entry for the recent refactoring of the `CmsPageProvider` class.
+
+---
+
+## [2.3.2] - 2026-02-16
+
+### Changed
+
+* **Refactoring**: Modernized `M2Boilerplate\CriticalCss\Provider\CmsPageProvider` with PHP 8.3 features, including constructor property promotion and strict typing.
+
+### Removed
+
+* **Clean Code**: Removed dead code (commented-out logic) and unused dependencies (`PageRepositoryInterface`, `SearchCriteriaBuilder`, `PageHelper`) from `CmsPageProvider` to improve maintainability and performance.
+
 ---
 
 ## [2.3.1] - 2026-02-16
