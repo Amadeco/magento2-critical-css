@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.3] - 2026-02-17
+
+### Changed
+
+* **Plugin Architecture Refactoring**:
+* Refactored `M2Boilerplate\CriticalCss\Plugin\AsyncCssPlugin` to remove inheritance from the core Magento class, resolving the "Double Instantiation" anti-pattern and aligning with Magento 2.4.8 interceptor standards.
+* Manually implemented the CSS `rel="preload"` replacement logic within the plugin to ensure seamless functionality while the native plugin is disabled via `di.xml`.
+
+* **Provider Modernization**:
+* Refactored `ContactProvider`, `CustomerProvider`, and `DefaultProvider` to utilize **PHP 8.3 Constructor Property Promotion** and `readonly` properties.
+* Optimized `CustomerProvider` to use the native `Magento\Customer\Model\Url` service contract, ensuring architectural consistency and respect for system-wide customer route configurations.
+
+### Fixed
+
+* **XML Syntax Error**: Corrected a malformed closing tag in `etc/config.xml` that prevented proper loading of default configuration values.
+* **Configuration Logic**: Resolved a bug in `AsyncCssPlugin` where an undefined method `isCssCriticalEnabled` was called; it now correctly utilizes the `isEnabled()` method from the `Config` service.
+* **Default Fallback**: Re-enabled and modernized the `DefaultProvider` to serve as a robust catch-all fallback for generic page layouts.
+
+---
+
+### Next Step for Amadeco
+
+Would you like me to generate the **Data Patch** to migrate the existing configuration values from the old `dev/css` paths to the new `m2bp_critical_css` section to ensure zero downtime during deployment?
+
+---
+
 ## [2.3.2] - 2026-02-16
 
 ### Added
