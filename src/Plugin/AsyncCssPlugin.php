@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace M2Boilerplate\CriticalCss\Plugin;
 
 use M2Boilerplate\CriticalCss\Config\Config;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\HTTP\Header;
 use Magento\Framework\View\Result\Layout;
-use Magento\Store\Model\ScopeInterface;
-use Magento\Theme\Controller\Result\AsyncCssPlugin as MagentoAsyncCssPlugin;
 
 /**
  * Plugin to conditionally disable Magento's native Async CSS loading.
@@ -18,8 +15,11 @@ use Magento\Theme\Controller\Result\AsyncCssPlugin as MagentoAsyncCssPlugin;
  * This ensures that the Critical CSS generation process (running via headless browser)
  * receives the fully rendered page without async JS interference, and prevents
  * async loading if no critical CSS is actually available.
+ *
+ * Since this plugin replaces the native Magento AsyncCssPlugin (via di.xml),
+ * it implements the CSS replacement logic directly without inheritance.
  */
-class AsyncCssPlugin extends MagentoAsyncCssPlugin
+class AsyncCssPlugin
 {
     /**
      * User Agent used by the 'critical' npm package (via 'got' library).
@@ -34,15 +34,19 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
     private const REGEX_CRITICAL_CSS_BLOCK = '#<style[^>]*data-type=["\']criticalCss["\'][^>]*>(.*?)</style>#si';
 
     /**
-     * @param ScopeConfigInterface $scopeConfig
+     * Regex to match standard stylesheet links for replacement.
+     * Captures attributes before and after the rel="stylesheet" definition.
+     */
+    private const REGEX_CSS_LINK = '/<link([^>]+)rel="stylesheet"([^>]*)>/i';
+
+    /**
+     * @param Config $config
      * @param Header $httpHeader
      */
     public function __construct(
-        ScopeConfigInterface $scopeConfig,
-        protected readonly Config $config,
-        protected readonly Header $httpHeader
+        private readonly Config $config,
+        private readonly Header $httpHeader
     ) {
-        parent::__construct($scopeConfig);
     }
 
     /**
@@ -55,8 +59,34 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
      */
     public function afterRenderResult(Layout $subject, Layout $result, ResponseInterface $httpResponse): Layout
     {
-        if ($this->canBeProcessed($httpResponse)) {
-            return parent::afterRenderResult($subject, $result, $httpResponse);
+        if (!$this->canBeProcessed($httpResponse)) {
+            return $result;
+        }
+
+        $content = (string)$httpResponse->getContent();
+
+        // Apply Async CSS pattern (rel="preload" with JS onload handler)
+        // This duplicates the logic of the native plugin we are replacing.
+        $newContent = preg_replace_callback(
+            self::REGEX_CSS_LINK,
+            function (array $matches): string {
+                // $matches[0] = Full match
+                // $matches[1] = Attributes before rel
+                // $matches[2] = Attributes after rel
+
+                // Construct the preload link
+                $preload = '<link' . $matches[1] . 'rel="preload" as="style" onload="this.onload=null;this.rel=\'stylesheet\'"' . $matches[2] . '>';
+
+                // Construct the fallback noscript link for JS-disabled browsers
+                $noscript = '<noscript>' . $matches[0] . '</noscript>';
+
+                return $preload . $noscript;
+            },
+            $content
+        );
+
+        if (is_string($newContent)) {
+            $httpResponse->setContent($newContent);
         }
 
         return $result;
@@ -71,7 +101,7 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
     private function canBeProcessed(ResponseInterface $httpResponse): bool
     {
         // 1. Is the feature enabled in config?
-        if (!$this->config->isCssCriticalEnabled()) {
+        if (!$this->config->isEnabled()) {
             return false;
         }
 
@@ -104,14 +134,12 @@ class AsyncCssPlugin extends MagentoAsyncCssPlugin
         // matches[1] will contain the inner text of the style tag.
         if (preg_match(self::REGEX_CRITICAL_CSS_BLOCK, $content, $matches)) {
             $cssContent = trim($matches[1] ?? '');
-            
+
             // If the trimmed content is empty, the node is considered empty.
             return $cssContent === '';
         }
 
-        // If the block is not found at all, we consider it "empty" (or non-existent)
-        // implying standard async loading might not be appropriate or necessary via this logic.
-        // However, looking at legacy logic: if the block was removed/not found, it returned true (empty).
+        // If the block is not found at all, we consider it "empty"
         return true;
     }
 }
