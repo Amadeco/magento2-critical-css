@@ -42,7 +42,7 @@
                 <field id="critical_css_force_include_css_selectors" translate="label" type="textarea" sortOrder="2000" showInDefault="1" canRestore="1">
                     <label>Force Include CSS Selectors</label>
                     <validate>required-entry</validate>
-                    <comment>Comma separated css selectors to keep in critical css, even if not appearing in critical viewport. Strings or regex (f.e. '.keepMeEvenIfNotSeenInDom', /^\.button/)</comment>
+                    <comment>One selector per line to keep in critical CSS, even if not appearing in critical viewport. Strings or regex (f.e. '.keepMeEvenIfNotSeenInDom', /^\.button/)</comment>
                     <depends>
                         <field id="*/*/use_css_critical_path">1</field>
                     </depends>
