@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.4] - 2026-02-17
+
+### Changed
+
+* **Robust Configuration Parsing**: Refactored `M2Boilerplate\CriticalCss\Config\Config::getForceIncludeCssSelectors` to use newline delimiters (`\n`) instead of commas. This allows the safe inclusion of complex CSS selectors and regex patterns that contain commas (e.g., attribute selectors like `div[data-val="1,2"]`) without breaking the parser logic.
+
+### Optimized
+
+* **Command Line Integrity**: Verified that the `CriticalCss` service correctly handles multi-argument injection for the `--penthouse-forceInclude` flag. Combined with Symfony's `Process` component, this ensures that complex selectors are automatically escaped and treated as single discrete arguments, preventing shell injection or command malformation.
+
+### Documentation
+
+* **Admin Guidance**: Updated recommended field comments for the "Force Include CSS Selectors" setting to instruct users on the new "one-selector-per-line" format.
+
+---
+
 ## [2.3.3] - 2026-02-17
 
 ### Changed
