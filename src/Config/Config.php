@@ -64,7 +64,11 @@ class Config
             return [];
         }
 
-        $selectors = explode(',', (string)$value);
+        // INTEGRATION FIX: Use newline as delimiter instead of comma.
+        // This prevents the selector from breaking when it contains a comma (e.g. "div[data-val='1,2']").
+        // We strictly treat each line as a single selector.
+        $selectors = preg_split('/\r\n|\r|\n/', (string)$value);
+
         return array_values(array_filter(array_map('trim', $selectors)));
     }
 
