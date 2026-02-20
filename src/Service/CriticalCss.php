@@ -24,13 +24,13 @@ class CriticalCss
     /**
      * Create a configured Process instance for Critical CSS generation.
      *
-     * @param string $url
-     * @param array<string> $dimensions
-     * @param array<string> $forceIncludeCssSelectors
-     * @param string $criticalBinary
-     * @param string|null $username
-     * @param string|null $password
-     * @return Process
+     * @param string $url Target URL to process.
+     * @param string[] $dimensions Array of viewport dimensions (e.g., ['1024x768', '1920x1080']).
+     * @param string[] $forceIncludeCssSelectors Array of CSS selectors to forcefully include.
+     * @param string $criticalBinary Executable binary command or absolute path.
+     * @param string|null $username HTTP Basic Authentication username.
+     * @param string|null $password HTTP Basic Authentication password.
+     * * @return Process
      */
     public function createCriticalCssProcess(
         string $url,
@@ -40,43 +40,36 @@ class CriticalCss
         ?string $username = null,
         ?string $password = null
     ): Process {
-        $command = [
-            $criticalBinary,
-            $url
-        ];
+        $command = [$criticalBinary, $url];
 
+        // Append forcefully included CSS selectors
         foreach ($forceIncludeCssSelectors as $selector) {
-            $command[] = '--penthouse-forceInclude';
-            $command[] = $selector;
+            array_push($command, '--penthouse-forceInclude', $selector);
         }
 
+        // Append viewport dimensions
         foreach ($dimensions as $dimension) {
-            $command[] = '--dimensions';
-            $command[] = $dimension;
+            array_push($command, '--dimensions', $dimension);
         }
 
-        // Legacy Authentication Logic
-        // Kept for backward compatibility with the critical binary signature.
-        if ($username !== null && $password !== null && $username !== '' && $password !== '') {
-            $command[] = '--user';
-            $command[] = $username;
-            $command[] = '--pass';
-            $command[] = $password;
+        // Append Legacy Authentication logic if credentials are provided
+        if (trim((string)$username) !== '' && trim((string)$password) !== '') {
+            array_push($command, '--user', $username, '--pass', $password);
         }
 
-        $command[] = '--strict';
-        $command[] = '--minify';
-        $command[] = '--no-request-https.rejectUnauthorized';
-
-        $command[] = '--ignore-atrule';
-        $command[] = '@font-face';
-        $command[] = '--ignore-atrule';
-        $command[] = 'print';
+        // Append static core arguments (Note: '--minify' explicitly omitted for binary compatibility)
+        array_push(
+            $command,
+            '--strict',
+            '--no-request-https.rejectUnauthorized',
+            '--ignore-atrule',
+            '@font-face',
+            '--ignore-atrule',
+            'print'
+        );
 
         /** @var Process $process */
-        $process = $this->processFactory->create(['command' => $command]);
-
-        return $process;
+        return $this->processFactory->create(['command' => $command]);
     }
 
     /**
